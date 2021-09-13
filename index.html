@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Keycumber js</title>
+    <style>
+        .src {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .src div {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: stretch;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: stretch;
+        }
+
+        .result--download {
+            margin-top: 16px;
+        }
+
+        #itemsPerFile {
+            width: 50px;
+        }
+    </style>
+</head>
+<body>
+<h1>Keycumber js</h1>
+
+<div class="src">
+    <div>
+        <h2>Destinations</h2>
+        <textarea id="destinations" cols="30" rows="10"></textarea>
+    </div>
+
+    <div>
+        <h2>Mods</h2>
+        <textarea id="mods" cols="30" rows="10"></textarea>
+    </div>
+</div>
+
+<br>
+
+<label>
+    Mode
+    <select id="mode">
+        <option value="dst-first">destination first</option>
+        <option value="mod-first">mod first</option>
+        <option value="both">both</option>
+    </select>
+</label>
+
+<h2>Result</h2>
+<textarea id="result" disabled cols="30" rows="10"></textarea>
+
+<div class="result--download">
+    <label>
+        Items per file
+        <input id="itemsPerFile" type="number" value="700">
+    </label>
+    <button id="download">Download</button>
+</div>
+
+<script type="module">
+  import { fromEvent, combineLatest } from 'https://cdn.skypack.dev/rxjs'
+  import { debounceTime, filter, map, startWith } from 'https://cdn.skypack.dev/rxjs/operators'
+  import _chunk from 'https://cdn.skypack.dev/lodash.chunk'
+
+  let fromCsvTextArea = ($el) => fromEvent($el, 'input').pipe(
+    debounceTime(300),
+    map(e => e.target.value.split('\n').map(s => s.trim()).filter(Boolean)),
+    filter(v => v.length > 0),
+  )
+
+  let $mode = document.getElementById('mode')
+  let $result = document.getElementById('result')
+
+  combineLatest([
+    fromCsvTextArea(document.getElementById('destinations')),
+    fromCsvTextArea(document.getElementById('mods')),
+    fromEvent($mode, 'input').pipe(map(e => e.target.value), startWith($mode.value)),
+  ]).pipe(
+    map(([destinations, mods, mode]) =>
+      destinations.flatMap(d => mods.flatMap(m => {
+        switch (mode) {
+          case 'dst-first':
+            return `${d} ${m}`
+          case 'mod-first':
+            return `${m} ${d}`
+          default:
+            return [`${d} ${m}`, `${m} ${d}`]
+        }
+      })),
+    ),
+  ).subscribe(r => $result.value = r.join('\n'))
+
+
+  let toDataCsv = (values) => encodeURI('data:text/csv;charset=utf-8,' + values.join('\n'))
+
+  let download = (fileName, content) => {
+    let link = document.createElement('a')
+    link.setAttribute('href', content)
+    link.setAttribute('download', fileName)
+    document.body.appendChild(link)
+    link.click()
+  }
+
+  let $itemsPerFile = document.getElementById('itemsPerFile')
+
+  document.getElementById('download').addEventListener('click', () => {
+    _chunk($result.value.split('\n'), +$itemsPerFile.value)
+      .forEach((values, i) => download(`my_data-${i}.csv`, toDataCsv(values)))
+
+  })
+</script>
+</body>
+</html>
