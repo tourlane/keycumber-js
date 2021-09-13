@@ -59,10 +59,11 @@ let download = (fileName, content) => {
   link.click();
 };
 
+let $fileName= document.getElementById("fileName");
 let $itemsPerFile = document.getElementById("itemsPerFile");
 
 document.getElementById("download").addEventListener("click", () => {
   _chunk($result.value.split("\n"), +$itemsPerFile.value).forEach((values, i) =>
-    download(`my_data-${i}.csv`, toDataCsv(values))
+    download(`${$fileName.value || 'keywords'}-${i}.csv`, toDataCsv(values))
   );
 });
